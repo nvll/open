@@ -74,7 +74,7 @@ func main() {
 			fmt.Printf("[%d]\t%s\n", i, fpath)
 		}
 
-selection:
+	selection:
 		print("? ")
 		fmt.Scanf("%d", &fileSel)
 		if fileSel > len(files) {
