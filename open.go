@@ -29,45 +29,51 @@ import (
 )
 
 func main() {
-	var err error
-	var editor string = os.Getenv("EDITOR")
-	var editorPath, openPath string
+	var editor, pathArg, nameArg, editorPath, openPath string
 	var files []string
 	var fileSel int
-
-	// Passed to os.Walk. Needs to be a Function Literal to have access
-	// to any useful state
-	callback := func(path string, info os.FileInfo, err error) error {
-		if info.Name() == os.Args[1] {
-			files = append(files, path)
-		}
-
-		return nil
-	}
 
 	if len(os.Args) < 2 {
 		println("usage: ", os.Args[0], " <filename")
 		os.Exit(1)
 	}
 
+	nameArg = os.Args[1]
+	if len(os.Args) == 3 {
+		pathArg = os.Args[2]
+	} else {
+		pathArg = "."
+	}
+
+	editor = os.Getenv("EDITOR")
 	if editor == "" {
-		print("No EDITOR env var set")
+		println("No EDITOR env var set")
 		os.Exit(1)
 	}
 
-	// The editor exists, right?
-	if editorPath, err = exec.LookPath(editor); err != nil {
+	editorPath, err := exec.LookPath(editor);
+	if err != nil {
 		println(err.Error())
 		os.Exit(1)
 	}
 
 	// Find the source file, or ask for a choice if more than one exists
-	filepath.Walk(".", callback)
-	switch {
-	case len(files) == 0:
-		println(os.Args[1], "not found")
+	callback := func(path string, info os.FileInfo, err error) error {
+		if info.Name() == nameArg {
+			files = append(files, path)
+		} else if match, err := filepath.Match(nameArg, info.Name()); match && err == nil {
+			files = append(files, path)
+		}
+
+		return nil
+	}
+
+	filepath.Walk(pathArg, callback)
+	switch len(files) {
+	case 0:
+		println(nameArg, "not found")
 		os.Exit(1)
-	case len(files) == 1:
+	case 1:
 		openPath = files[0]
 	default:
 		for i, fpath := range files {
@@ -85,11 +91,11 @@ func main() {
 		openPath = files[fileSel]
 	}
 
-	if err = syscall.Exec(editorPath, []string{editorPath, openPath}, os.Environ()); err != nil {
+	if err := syscall.Exec(editorPath, []string{editorPath, openPath}, os.Environ()); err != nil {
 		println("Couldn't exec", err.Error())
 		os.Exit(1)
 	}
 
 }
 
-/* vim: set noexpandtab:ts=4:sw=4:sts=4 */
+// vim: noet ts=4 sw=4 sts=4 tw=0
